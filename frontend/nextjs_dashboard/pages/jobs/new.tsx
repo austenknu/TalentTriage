@@ -38,13 +38,15 @@ export default function CreateJob() {
   const [minYearsExperience, setMinYearsExperience] = useState('');
   const [skillInput, setSkillInput] = useState('');
   const [skills, setSkills] = useState<string[]>([]);
+  const [preferredSkillInput, setPreferredSkillInput] = useState('');
+  const [preferredSkills, setPreferredSkills] = useState<string[]>([]);
   
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
-  // Handle adding a skill
+  // Handle adding a required skill
   const handleAddSkill = () => {
     if (skillInput.trim() && !skills.includes(skillInput.trim())) {
       setSkills([...skills, skillInput.trim()]);
@@ -52,16 +54,33 @@ export default function CreateJob() {
     }
   };
   
-  // Handle removing a skill
+  // Handle removing a required skill
   const handleDeleteSkill = (skillToDelete: string) => {
     setSkills(skills.filter(skill => skill !== skillToDelete));
   };
   
+  // Handle adding a preferred skill
+  const handleAddPreferredSkill = () => {
+    if (preferredSkillInput.trim() && !preferredSkills.includes(preferredSkillInput.trim())) {
+      setPreferredSkills([...preferredSkills, preferredSkillInput.trim()]);
+      setPreferredSkillInput('');
+    }
+  };
+  
+  // Handle removing a preferred skill
+  const handleDeletePreferredSkill = (skillToDelete: string) => {
+    setPreferredSkills(preferredSkills.filter(skill => skill !== skillToDelete));
+  };
+  
   // Handle skill input key press (Enter)
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent, isPreferred = false) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleAddSkill();
+      if (isPreferred) {
+        handleAddPreferredSkill();
+      } else {
+        handleAddSkill();
+      }
     }
   };
   
@@ -96,6 +115,7 @@ export default function CreateJob() {
           title: title.trim(),
           description: description.trim(),
           required_skills: skills,
+          preferred_skills: preferredSkills.length > 0 ? preferredSkills : ['None'], // Ensure we never send null
           min_years_experience: minYearsExperience ? parseInt(minYearsExperience) : null
         })
         .select()
@@ -200,49 +220,94 @@ export default function CreateJob() {
             sx={{ mb: 3 }}
           />
           
-          <TextField
-            margin="normal"
-            fullWidth
-            id="skills"
-            label="Required Skills"
-            name="skills"
-            value={skillInput}
-            onChange={(e) => setSkillInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={loading}
-            placeholder="Type a skill and press Enter"
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Button 
-                    onClick={handleAddSkill}
-                    disabled={!skillInput.trim() || loading}
-                  >
-                    <AddIcon />
-                  </Button>
-                </InputAdornment>
-              ),
-            }}
-            sx={{ mb: 2 }}
-          />
-          
-          {/* Skills chips */}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-            {skills.map((skill, index) => (
-              <Chip
-                key={index}
-                label={skill}
-                onDelete={() => handleDeleteSkill(skill)}
-                color="primary"
-                variant="outlined"
+          {/* Required Skills */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Required Skills
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <TextField
+                fullWidth
+                id="skills"
+                label="Add Required Skill"
+                value={skillInput}
+                onChange={(e) => setSkillInput(e.target.value)}
+                onKeyPress={(e) => handleKeyPress(e)}
                 disabled={loading}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Button
+                        onClick={handleAddSkill}
+                        disabled={!skillInput.trim() || loading}
+                        size="small"
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                      >
+                        Add
+                      </Button>
+                    </InputAdornment>
+                  ),
+                }}
               />
-            ))}
-            {skills.length === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                No skills added yet. Add at least one required skill.
-              </Typography>
-            )}
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {skills.map((skill) => (
+                <Chip
+                  key={skill}
+                  label={skill}
+                  onDelete={() => handleDeleteSkill(skill)}
+                  disabled={loading}
+                />
+              ))}
+            </Box>
+          </Box>
+          
+          {/* Preferred Skills */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              Preferred Skills
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <TextField
+                fullWidth
+                id="preferredSkills"
+                label="Add Preferred Skill"
+                value={preferredSkillInput}
+                onChange={(e) => setPreferredSkillInput(e.target.value)}
+                onKeyPress={(e) => handleKeyPress(e, true)}
+                disabled={loading}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Button
+                        onClick={handleAddPreferredSkill}
+                        disabled={!preferredSkillInput.trim() || loading}
+                        size="small"
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                      >
+                        Add
+                      </Button>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {preferredSkills.map((skill) => (
+                <Chip
+                  key={skill}
+                  label={skill}
+                  onDelete={() => handleDeletePreferredSkill(skill)}
+                  disabled={loading}
+                  color="secondary"
+                />
+              ))}
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              Optional: Add skills that are nice-to-have but not required
+            </Typography>
           </Box>
           
           {/* Submit button */}
