@@ -1,0 +1,32 @@
+# API Framework
+fastapi==0.95.1
+uvicorn==0.22.0
+python-multipart==0.0.6
+
+# Database & Storage
+supabase-py==0.0.3
+psycopg2-binary==2.9.6
+pgvector==0.1.8
+
+# Document Parsing
+apache-tika==2.6.0
+pdfplumber==0.9.0
+python-docx==0.8.11
+pyresparser==1.0.6
+spacy==3.5.2
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.5.0/en_core_web_sm-3.5.0-py3-none-any.whl
+
+# Vector Embeddings
+sentence-transformers==2.2.2
+torch==2.0.1
+transformers==4.29.2
+
+# Background Processing
+redis==4.5.5
+rq==1.15.0
+
+# Utilities
+python-dotenv==1.0.0
+loguru==0.7.0
+numpy==1.24.3
+pandas==2.0.1

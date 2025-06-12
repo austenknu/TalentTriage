@@ -1,0 +1,143 @@
+version: '3.8'
+
+services:
+  # Redis service for job queue
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # FastAPI ingest service
+  ingest-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: uvicorn ingest_service.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - STORAGE_BUCKET=${STORAGE_BUCKET}
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Parse worker service
+  parse-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: python -m parse_worker.worker
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - STORAGE_BUCKET=${STORAGE_BUCKET}
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - ingest-service
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Embedding worker service
+  embedding-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: python -m embedding_worker.worker
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - ingest-service
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Scoring worker service
+  scoring-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: python -m scoring_worker.worker
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+      - TOP_THRESHOLD=0.75
+      - MODERATE_THRESHOLD=0.5
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - redis
+      - ingest-service
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Next.js frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - ingest-service
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  redis-data:
+    driver: local

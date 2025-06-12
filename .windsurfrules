@@ -1,0 +1,175 @@
+# Tech Stack
+
+## General Overview
+
+The Resume Screener MVP is a full-stack AI-powered platform for parsing, embedding, and ranking candidate resumes against a job description.
+
+- **Backend Services**: Python (FastAPI for APIs, RQ for workers), Hugging Face Transformers, PyResparser, pgvector, Supabase-Py.
+- **Frontend**: Next.js (React), TypeScript, Supabase-js, Chart.js, React Table, MUI.
+- **Database/Storage**: Supabase Cloud (PostgreSQL + pgvector + Storage Buckets).
+- **Vector Embeddings**: SentenceTransformers (`all-MiniLM-L6-v2`).
+- **Document Parsing**: Apache Tika, PyPDF2, python-docx.
+- **Queueing**: RQ (Redis Queue, for asynchronous background workers).
+- **Logging**: Loguru.
+- **Environment**: `.env` (env vars for Supabase, model paths, etc).
+
+---
+
+## General Coding Conventions
+
+1. **Language Versions**:
+    * Python: 3.9+
+    * JavaScript/TypeScript: ES6+/TypeScript 4.x
+
+2. **Formatting**:
+    * **Python**: Use Black, isort, PEP8 compliant.
+    * **TypeScript/JSX**: Use Prettier.
+
+3. **Docstrings & Comments**:
+    * **Python**: Use Google-style `"""Docstrings"""` with `Args:` and `Returns:`.
+    * **TSX**: Use JSDoc (`/** ... */`) for component and utility functions.
+
+4. **Type Hinting**:
+    * Python: Mandatory on all function signatures and class attributes.
+    * TypeScript: Required for all interfaces, props, and state.
+
+5. **Logging**:
+    * Use `loguru` in all Python services.
+    * Include logs for:
+        * Resume ingestion
+        * Parsing start/end
+        * Embedding generation
+        * Scoring results
+        * Any failure in file processing or DB I/O.
+
+6. **Error Handling**:
+    * Python services: Catch and log exceptions with stack traces. Use FastAPI's `HTTPException` for API routes.
+    * Frontend: Use try/catch for all async calls with error state UI fallback.
+
+7. **Modularity**:
+    * Python: Use `service.py`, `router.py`, and `worker.py` where applicable.
+    * Next.js: Pages under `/pages`, components under `/components`, utilities under `/lib` or `/utils`.
+
+---
+
+## 🐍 Backend (Python + Supabase) Rules
+
+1. **Service Split**:
+    * `ingest_service`: Upload endpoint, stores file to Supabase Storage.
+    * `parse_worker`: Pulls stored resumes, extracts text via PDFPlumber/docx2txt/Tika.
+    * `embedding_worker`: Uses SentenceTransformer to encode text.
+    * `scoring_worker`: Calculates multi-dimensional scores + category label.
+
+2. **Resume Parsing**:
+    * Use `PyResparser` or fallback to manual NLP via `spaCy` (`en_core_web_sm`).
+    * Extract fields: name, email, phone, skills, experience, education, total years.
+
+3. **Embedding Generation**:
+    * Model: `all-MiniLM-L6-v2` from `sentence-transformers`.
+    * Normalized cosine embedding.
+    * Store as pgvector in `parsed_resume.embedding`.
+
+4. **Scoring Logic**:
+    * Compute:
+        * Semantic similarity (`embedding <-> jd_vector`)
+        * Skills match (Jaccard)
+        * Experience score (based on total years)
+        * Education match (simple keyword presence)
+    * Combine via weighted average and assign category.
+
+5. **Supabase Usage**:
+    * Supabase-Py for DB and storage interaction.
+    * Enable `pgvector` for similarity search.
+    * Store resume files in Supabase Storage (`resumes/` bucket).
+    * Use signed URLs for access.
+
+6. **Database Schema**:
+    * `parsed_resume`: stores resume fields + embedding.
+    * `job_description`: stores job posting + embedding.
+    * `candidate_score`: stores individual score components and final category.
+
+---
+
+## 🌐 Frontend (Next.js/React/TypeScript) Rules
+
+1. **Framework**:
+    * Next.js (App Router optional)
+    * TypeScript strictly typed.
+
+2. **UI Libraries**:
+    * Material-UI (MUI) for layout/components.
+    * React-Chartjs-2 for bar/pie/radar charts.
+    * React Table (TanStack) for candidate listings.
+
+3. **Supabase Integration**:
+    * Use `@supabase/supabase-js` to query candidates, job data, and scores.
+    * Direct filtering from DB (e.g., `.eq('category', 'top')`).
+
+4. **Component Design**:
+    * `CandidateTable.tsx`: Tabular UI for all scored candidates.
+    * `ScoreRadar.tsx`: Renders radar chart of top 5 vs. average.
+    * `UploadDropZone.tsx`: For uploading PDF/DOCX resumes via FormData.
+
+5. **Routing & Pages**:
+    * `/` – Overview/dashboard
+    * `/job/[job_id]` – JD-specific candidate list and charts
+
+6. **State Management**:
+    * Local state: React `useState`
+    * Async data: `useEffect` + Supabase fetch
+    * Future: Integrate Zustand or React Query as needed
+
+7. **Error/Loading UX**:
+    * All API calls wrapped in try/catch with fallback UI.
+    * Loading spinners and error toasts (MUI Snackbar).
+
+---
+
+## 🧪 Testing
+
+1. **Backend**:
+    * Use `pytest`, `httpx.AsyncClient` for testing API routes and workers.
+    * Test file parsing (sample PDFs/DOCXs), NLP field accuracy, scoring logic.
+
+2. **Frontend**:
+    * Use `Jest` or `Vitest` for unit testing components.
+    * Use `Cypress` for E2E if added.
+
+---
+
+## 📦 Key Dependencies
+
+**Backend**:
+- `fastapi`
+- `apache-tika`, `pdfplumber`, `python-docx`
+- `pyresparser`
+- `sentence-transformers`
+- `loguru`
+- `supabase-py`
+- `rq`, `redis`
+
+**Frontend**:
+- `next`, `react`, `typescript`
+- `@supabase/supabase-js`
+- `@mui/material`, `react-chartjs-2`, `@tanstack/react-table`
+
+---
+
+## 📁 Directory Structure
+
+* Follow the existing directory structure 
+src/
+├── services/
+│ ├── ingest_service/
+│ ├── parse_worker/
+│ ├── embedding_worker/
+│ ├── scoring_worker/
+├── frontend/
+│ ├── components/
+│ ├── pages/
+│ ├── utils/
+├── sql/
+│ ├── 001_enable_pgvector.sql
+│ ├── 002_schema.sql
+├── .env.example
+└── README.md
