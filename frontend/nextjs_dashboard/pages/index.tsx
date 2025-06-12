@@ -107,9 +107,7 @@ export default function Home() {
         // Get candidates by category
         const { data: categoryData, error: categoryError } = await supabase
           .from('candidate_score')
-          .select('category, count')
-          .select('category')
-          .execute();
+          .select('category');
         
         if (categoryError) throw categoryError;
         
@@ -140,9 +138,7 @@ export default function Home() {
         // Get processing status counts
         const { data: statusData, error: statusError } = await supabase
           .from('uploads')
-          .select('status, count')
-          .select('status')
-          .execute();
+          .select('status');
         
         if (statusError) throw statusError;
         

@@ -106,9 +106,21 @@ export default function JobPage() {
         const { data: candidateData, error: candidateError } = await supabase
           .from('parsed_resume')
           .select(`
-            *,
-            score:candidate_score(*),
-            upload:uploads(*)
+            candidate_id,
+            job_id,
+            upload_id,
+            raw_text,
+            name,
+            email,
+            phone,
+            skills,
+            work_experience,
+            education,
+            total_years_exp,
+            created_at,
+            updated_at,
+            candidate_score(id, candidate_id, job_id, semantic_score, skills_score, experience_score, education_score, composite_score, category),
+            uploads(id, file_key, original_filename, status)
           `)
           .eq('job_id', job_id);
         
@@ -117,8 +129,14 @@ export default function JobPage() {
         // Process and format candidate data
         const formattedCandidates = candidateData.map((candidate: any) => ({
           ...candidate,
-          work_experience: candidate.work_experience ? JSON.parse(candidate.work_experience) : [],
-          education: candidate.education ? JSON.parse(candidate.education) : []
+          // Parse JSON strings if they're stored as strings
+          work_experience: typeof candidate.work_experience === 'string' ? 
+            JSON.parse(candidate.work_experience) : candidate.work_experience || [],
+          education: typeof candidate.education === 'string' ? 
+            JSON.parse(candidate.education) : candidate.education || [],
+          // Rename fields to match expected structure
+          score: candidate.candidate_score?.[0] || null,
+          upload: candidate.uploads?.[0] || null
         }));
         
         setCandidates(formattedCandidates);

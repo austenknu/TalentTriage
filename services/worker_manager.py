@@ -161,15 +161,29 @@ def process_pending_scoring() -> int:
     AND cs.id IS NULL
     """
     
-    response = supabase.table("parsed_resume").execute_sql(sql, {})
+    # Use the correct column names from the parsed_resume table
+    response = supabase.table("parsed_resume").select("candidate_id, job_id").not_.is_("embedding", "null").execute()
     
-    if not response.data:
+    # Get candidates that don't have scores yet by checking against the candidate_score table
+    candidates_with_embeddings = response.data if response.data else []
+    
+    # Filter out candidates that already have scores
+    pending_candidates = []
+    for candidate in candidates_with_embeddings:
+        score_check = supabase.table("candidate_score").select("id").eq("candidate_id", candidate["candidate_id"]).execute()
+        if not score_check.data:
+            pending_candidates.append(candidate)
+    
+    if not pending_candidates:
         logger.info("No pending scoring jobs")
         return 0
     
     count = 0
-    for row in response.data:
-        enqueue_scoring_job(row["candidate_id"], row["job_id"])
+    for candidate in pending_candidates:
+        candidate_id = candidate['candidate_id']
+        job_id = candidate['job_id']
+        
+        enqueue_scoring_job(candidate_id, job_id)
         count += 1
     
     logger.info(f"Enqueued {count} scoring jobs")
