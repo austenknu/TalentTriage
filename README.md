@@ -59,7 +59,7 @@ TalentTriage is built with a modular architecture consisting of:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/TalentTriage.git
+   git clone https://github.com/austenknu/TalentTriage.git
    cd TalentTriage
    ```
 
